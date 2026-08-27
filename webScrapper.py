@@ -18,11 +18,41 @@
 
 """ 
 
-from bs4 import beautifulSoup
+import requests # requests import is able to take care of the TCP connection and do HTTP get, the server sends us an HTTP responses, and the body of that response contains HTML. 
+from bs4 import BeautifulSoup
+
+url = "https://www.NBA.com" 
+headers = {
+    'user-agent': 'my-app/0.0.1'
+    }
+
+r = requests.get(url, headers=headers)
+
+r = requests.options("https://www.NBA.com")
+
+r.headers.get('content-type')
+
+print(r.headers)
+
+# Currently, this is able to return the headers of the domain that we select. The header is returned in raw HTML, so our next step would be to use BS4 to process this the HTML
+# TODO: 1. Check for status codes, check for roboot.txt, What to do when we get back JSON, check for what body of text you recieved.
+
+# 8/27/26: Read over more documentiaion
+
+ 
 
 
+
+
+
+
+
+'''
 def webScrapper ():
     return 
+
+'''
+
 
 
 
