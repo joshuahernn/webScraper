@@ -7,9 +7,13 @@ import os
 
 def get_url ():
 
-	entered_url = input("Please enter the full URL of the site you would like to scrape: ")
+	entered_url = input("Please enter the full URL of the site you would like to scrape in the HTTPS format: ")
 	print(f"Trying to access: ", entered_url)
 
+	while not entered_url.lower().startswith("https://www."):
+		entered_url = input("Error: Please enter the full URL with the HTTPS format: ")
+		
+		
 	headers = {
 		'user-agent': 'Mozilla/5.0'
 		}
@@ -22,10 +26,11 @@ def get_url ():
 	client_errors = [400, 401, 403, 404, 429]
 	server_errors = [500, 502, 503, 504]
 
-	while connection_attempts < max_attempts: # usually we can't connect off of first try. 
+	while connection_attempts < max_attempts: # usually we can't connect off of first try. so just for safety ;p
 		
 		r = requests.head(entered_url, allow_redirects=True) 
 		r = requests.get(entered_url, headers=headers)
+		# print(f"Trying to access: ", entered_url)
 
 		connection_attempts += 1
 	
@@ -33,6 +38,7 @@ def get_url ():
 	if r.status_code in client_sucess:
 		# print(soup.get_text()) 
 		# print(r.status_code) # FOR DEBUG
+		print("Connection established: Scraping HTML and URL")
 		return r
 
 	# if any error is returned / forbidden, prompt the user again 
@@ -49,39 +55,61 @@ def save_text(r):  # we need to save the URL and the body of text here.
 	readable_html = soup.get_text()
 	readable_url = r.url
 
+	# we need to grab href here for other links / redirects
+
+
+
 	# print(r.url)
 	# print(readable_html)
-	return readable_html, readable_url
+	return readable_url, readable_html
 
 
-def create_table(url, text):
+def create_table():
 
 	df = pd.DataFrame(
     {
-        "URL": [url],
-        "Text": [text]
-    }
-)
+        "URL": [],
+        "Text": []
+    })
 
+	df = df.astype({
+		'URL': 'string', 
+		'Text': 'string'
+	})
+
+
+
+def fill_table(url, text):
+
+	collected_rows= []
+
+	collected_rows.append({
+        "URL": url,
+        "Text": text
+    })
+
+	df = pd.DataFrame(collected_rows)
 	df.to_csv('output.csv', index=False)
 
 
-'''
+def redirect_urls():
 
-def fill_table(r):
-	input_data = [ 
-			{"URL: ", r.url}
 	
-		]
 
-'''
+
+	pass 
+
+
+
 
 def main():
-    r = get_url()
+	r = get_url()
+	
+	if r is not None:
+		create_table()
+		url, text = save_text(r)
+		fill_table(url, text)
 
-    if r is not None:
-        url, text = save_text(r)
-        create_table(url, text)
 
 
 if __name__ == "__main__":
@@ -96,9 +124,8 @@ restructured design and encapsulated all functions. we still need to implement t
 and create table functions seperately. 
 
 after we do this, 
-1. we need to organize the data on the csv.
 1.2. fix csv output, keeps directing to documents. (remember, make it general, create a folder if you need to)
-2. handle redirects logic
+2. handle redirects logic (href)
 3. handle crashes.
 4. handle hard limits. 
 
