@@ -1,58 +1,157 @@
-""" **Structure:** 
-- User-agent [^1]
-	- 2 places where we'll look at this term
-		1. HTTP User-Agent: When our scraper makes an HTTP request, it can send a user-agent header identifying itself. 
-		2. Robots.txt: Our scraper will end up reading the domains robots.txt, if has our certain crawler and a disallow rule, we'll have to follow it. 
-
-- Disallow [^2]
-	1.  If a disallow shows: Disallow /admin/, this means that all crawlers should avoid URLS under /admin/, but other URLs would be accessible.
-	2. If it shows just a '/', it means that we cannot crawl anywhere on the site, whereas if we have nothing there, we can crawl anywhere on the site.
-	
-- Uses only blank lines to separate different user-agent
-	1. We can have multiple disallows, and each line would be another path the crawler should avoid.
-
-- One directory per line.
-	1. Each directory would be separated with a disallow.
-
-- Once you have collected the data, it must be stored in a directory
-
-""" 
-
 import requests # requests import is able to take care of the TCP connection and do HTTP get, the server sends us an HTTP responses, and the body of that response contains HTML. 
 from bs4 import BeautifulSoup
-import networkx as nx
+import pandas as pd
+import networkx as nx # TODO: this is for requirement 3
+import os
 
-url = "https://www.NBA.com" 
-headers = {
-    'user-agent': 'my-app/0.0.1'
+
+def get_url ():
+
+	entered_url = input("Please enter the full URL of the site you would like to scrape: ")
+	print(f"Trying to access: ", entered_url)
+
+	headers = {
+		'user-agent': 'Mozilla/5.0'
+		}
+
+
+	connection_attempts = 0
+	max_attempts = 5
+	
+	client_sucess = [200]
+	client_errors = [400, 401, 403, 404, 429]
+	server_errors = [500, 502, 503, 504]
+
+	while connection_attempts < max_attempts: # usually we can't connect off of first try. 
+		
+		r = requests.head(entered_url, allow_redirects=True) 
+		r = requests.get(entered_url, headers=headers)
+
+		connection_attempts += 1
+	
+
+	if r.status_code in client_sucess:
+		# print(soup.get_text()) 
+		# print(r.status_code) # FOR DEBUG
+		return r
+
+	# if any error is returned / forbidden, prompt the user again 
+	if r.status_code in client_errors or r.status_code in server_errors:
+		input("You cannot access this site, please try another: ")
+	
+	# soup = BeautifulSoup(r.text, 'lxml')
+	
+	
+def save_text(r):  # we need to save the URL and the body of text here.
+
+	soup = BeautifulSoup(r.text, 'lxml')
+
+	readable_html = soup.get_text()
+	readable_url = r.url
+
+	# print(r.url)
+	# print(readable_html)
+	return readable_html, readable_url
+
+
+def create_table(url, text):
+
+	df = pd.DataFrame(
+    {
+        "URL": [url],
+        "Text": [text]
     }
+)
 
-r = requests.head(url, allow_redirects=True) #
-r = requests.options("https://www.NBA.com/robots.txt")
-r.headers.get('content-type') 
-
-soup = BeautifulSoup(r.text, 'lxml')
-
-# print(soup.get_text()) # TODO: Store this 
-
-# for link in soup.find_all('a'): # TODO: Store this
- #   print(link.get('href'))
+	df.to_csv('output.csv', index=False)
 
 
-# print(r.status_code) FOR DEBUG
+'''
+
+def fill_table(r):
+	input_data = [ 
+			{"URL: ", r.url}
+	
+		]
+
+'''
+
+def main():
+    r = get_url()
+
+    if r is not None:
+        url, text = save_text(r)
+        create_table(url, text)
 
 
-client_error = ["400","401","403","404","429"] # most common is going to be 403: forbidden
-lines = soup.prettify().splitlines()
-
-client_errors = [400, 401, 403, 404, 429]
-server_errors = [500, 502, 503, 504]
+if __name__ == "__main__":
+    main()
 
 
-if r.status_code in client_errors :
-    print("Client Error has been found:",r.status_code)  # web crawler stops, should redirect or kill process.
-if r.status_code in server_errors :
-    print("Server Error has been found:",r.status_code)
+
+''' 
+
+# 8/31/2026
+restructured design and encapsulated all functions. we still need to implement the fill table function as we want to keep the fill 
+and create table functions seperately. 
+
+after we do this, 
+1. we need to organize the data on the csv.
+1.2. fix csv output, keeps directing to documents. (remember, make it general, create a folder if you need to)
+2. handle redirects logic
+3. handle crashes.
+4. handle hard limits. 
+
+
+'''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
