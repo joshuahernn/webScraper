@@ -5,6 +5,7 @@ import networkx as nx # TODO: this is for requirement 3
 
 
 
+
 def get_url ():
 
 	entered_url = input("Please enter the full URL of the site you would like to scrape in the HTTPS format: ")
@@ -25,6 +26,16 @@ def get_url ():
 	client_sucess = [200]
 	client_errors = [400, 401, 403, 404, 429]
 	server_errors = [500, 502, 503, 504]
+
+	'''
+	# todo: we need to enforce the robots.txt
+		1. get the robot.txt, this is text file,
+		2. parse through the file, looking for user-agent *.
+		3. check the paths that we cannot travel
+		4. store the paths we cannot travel.
+
+		if the robot.txt says that we cannot travel any path '*', prompt the user, kill the process -> start with the beginning. 
+	'''
 
 	while connection_attempts < max_attempts: # usually we can't connect off of first try. so just for safety ;p
 		
@@ -96,6 +107,16 @@ def fill_table(url, text):
 def redirect_urls():
 	pass 
 
+'''
+#todo
+	0.5. lets try setting a hard limit on the redirects so we know when to stop. this will be hard coded for now.
+	1. pull hrefs from the save_text(r)
+	2. we need to impelement a fifo queue here.
+	3. check with the paths that we cannot travel to from get_urls.
+	4. tell user that there is queue, would you like to continue, if not just save the one link, if yes, proceed with the queue.
+
+	4.5 we're eventually going to pull more hrefs from travelling these redirects, store these in the queue, go through them as they go.
+'''
 
 
 
@@ -122,7 +143,7 @@ and create table functions seperately.
 
 after we do this, 
 2. handle redirects logic (href)
-3. handle crashes.
+3. handle crashes. (still need an idea for this)
 4. handle hard limits. 
 
 
