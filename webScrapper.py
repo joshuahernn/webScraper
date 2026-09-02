@@ -2,7 +2,7 @@ import requests # requests import is able to take care of the TCP connection and
 from bs4 import BeautifulSoup
 import pandas as pd
 import networkx as nx # TODO: this is for requirement 3
-import os
+
 
 
 def get_url ():
@@ -46,6 +46,7 @@ def get_url ():
 		input("You cannot access this site, please try another: ")
 	
 	# soup = BeautifulSoup(r.text, 'lxml')
+	
 	
 	
 def save_text(r):  # we need to save the URL and the body of text here.
@@ -93,10 +94,6 @@ def fill_table(url, text):
 
 
 def redirect_urls():
-
-	
-
-
 	pass 
 
 
@@ -124,7 +121,6 @@ restructured design and encapsulated all functions. we still need to implement t
 and create table functions seperately. 
 
 after we do this, 
-1.2. fix csv output, keeps directing to documents. (remember, make it general, create a folder if you need to)
 2. handle redirects logic (href)
 3. handle crashes.
 4. handle hard limits. 
