@@ -3,7 +3,43 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import networkx as nx # TODO: this is for requirement 3
 
+def check_robots(base_url, path): # use of ai, we need to simplify this. 
 
+    robots_url = base_url + "/robots.txt"
+
+    response = requests.get(robots_url)
+
+    if response.status_code != 200:
+        print("Could not read robots.txt")
+        return False
+
+    lines = response.text.splitlines()
+
+    reading_rules = False
+
+    for line in lines:
+
+        line = line.strip()
+        print(line)
+
+        if line.lower() == "user-agent: *":
+            reading_rules = True
+            # print("Found robot.txt")
+			 
+
+        elif line.lower().startswith("user-agent:"):
+            reading_rules = False
+
+        elif reading_rules and line.lower().startswith("disallow:"):
+
+            disallowed_path = line.split(":", 1)[1].strip()
+            print(disallowed_path)
+
+            if disallowed_path and path.startswith(disallowed_path):
+                return False
+
+	
+    return True
 
 
 def get_url ():
@@ -37,6 +73,12 @@ def get_url ():
 		if the robot.txt says that we cannot travel any path '*', prompt the user, kill the process -> start with the beginning. 
 	'''
 
+
+	if not check_robots(entered_url, "/"):
+		print("robots.txt does not allow this site to be crawled.")
+		return None
+	
+
 	while connection_attempts < max_attempts: # usually we can't connect off of first try. so just for safety ;p
 		
 		r = requests.head(entered_url, allow_redirects=True) 
@@ -59,6 +101,9 @@ def get_url ():
 	# soup = BeautifulSoup(r.text, 'lxml')
 	
 	
+
+
+
 	
 def save_text(r):  # we need to save the URL and the body of text here.
 
