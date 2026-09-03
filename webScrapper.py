@@ -56,8 +56,8 @@ def get_url ():
 		}
 
 
-	connection_attempts = 0
-	max_attempts = 5
+	# connection_attempts = 0
+	# max_attempts = 5
 	
 	client_sucess = [200]
 	client_errors = [400, 401, 403, 404, 429]
@@ -79,13 +79,22 @@ def get_url ():
 		return None
 	
 
-	while connection_attempts < max_attempts: # usually we can't connect off of first try. so just for safety ;p
+	# while connection_attempts < max_attempts: # usually we can't connect off of first try. so just for safety ;p
 		
-		r = requests.head(entered_url, allow_redirects=True) 
-		r = requests.get(entered_url, headers=headers)
+	r = requests.head(entered_url, allow_redirects=True) 
+
+	try:
+		r = requests.get(entered_url, headers=headers, timeout = 5) #timeout will error out, but we need to save the csv before we crash
+
+	except:
+		requests.exceptions.Timeout
+		print("This URL has timed out, resetting queue")
+		#todo: skip this url in the queue. (if its the first, restart the process, if there is a queue, skip the url)
+
+	
 		# print(f"Trying to access: ", entered_url)
 
-		connection_attempts += 1
+		# connection_attempts += 1
 	
 
 	if r.status_code in client_sucess:
@@ -162,6 +171,7 @@ def redirect_urls():
 
 	4.5 we're eventually going to pull more hrefs from travelling these redirects, store these in the queue, go through them as they go.
 '''
+
 
 
 
