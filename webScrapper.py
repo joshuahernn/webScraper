@@ -2,6 +2,9 @@ import requests # requests import is able to take care of the TCP connection and
 from bs4 import BeautifulSoup
 import pandas as pd
 import networkx as nx # TODO: this is for requirement 3
+from collections import deque
+from urllib.parse import urljoin
+import os 
 
 def check_robots(base_url, path): # use of ai, we need to simplify this. 
 
@@ -86,8 +89,7 @@ def get_url ():
 	try:
 		r = requests.get(entered_url, headers=headers, timeout = 5) #timeout will error out, but we need to save the csv before we crash
 
-	except:
-		requests.exceptions.Timeout
+	except requests.exceptions.Timeout: 
 		print("This URL has timed out, resetting queue")
 		#todo: skip this url in the queue. (if its the first, restart the process, if there is a queue, skip the url)
 
@@ -112,22 +114,22 @@ def get_url ():
 	
 
 
+def save_text(r):
 
-	
-def save_text(r):  # we need to save the URL and the body of text here.
+    soup = BeautifulSoup(r.text, 'lxml')
 
-	soup = BeautifulSoup(r.text, 'lxml')
+    main = soup.find("main")
 
-	readable_html = soup.get_text()
-	readable_url = r.url
+    if main:
+        readable_html = main.get_text(" ", strip=True)
+    else:
+        readable_html = soup.body.get_text(" ", strip=True)
 
-	# we need to grab href here for other links / redirects
+    readable_url = r.url
+
+    return readable_url, readable_html, soup
 
 
-
-	# print(r.url)
-	# print(readable_html)
-	return readable_url, readable_html
 
 
 def create_table():
@@ -147,19 +149,92 @@ def create_table():
 
 def fill_table(url, text):
 
-	collected_rows= []
+    collected_rows = []
 
-	collected_rows.append({
+    collected_rows.append({
         "URL": url,
         "Text": text
     })
 
-	df = pd.DataFrame(collected_rows)
-	df.to_csv('output.csv', index=False)
+    df = pd.DataFrame(collected_rows)
+
+    df.to_csv(
+        'output.csv',
+        mode='a',
+        header=not os.path.exists('output.csv'),
+        index=False
+    )
 
 
-def redirect_urls():
-	pass 
+def redirect_urls(soup, url):
+
+    queue = deque()
+
+    max_pages = 500
+    pages_checked = 0
+
+    visited = set()
+
+    # grab links from first page
+    for link in soup.find_all("a"):
+
+        href = link.get("href")
+
+        if href is not None:
+            full_url = urljoin(url, href)
+            queue.append(full_url)
+
+
+    while queue and pages_checked < max_pages:
+
+        next_url = queue.popleft()
+
+        if next_url in visited:
+            continue
+
+        visited.add(next_url)
+
+        print("Redirecting to:", next_url)
+
+        try:
+            r = requests.get(next_url, timeout=5)
+
+            if r.status_code == 200:
+
+                print("Successfully connected to:", r.url)
+
+                new_soup = BeautifulSoup(r.text, 'lxml')
+
+                main = new_soup.find("main")
+
+                if main:
+                    text = main.get_text(" ", strip=True)
+                else:
+                    text = new_soup.body.get_text(" ", strip=True)
+
+                fill_table(r.url, text)
+
+                pages_checked += 1
+
+
+                # NEW PART:
+                # grab links from this new page
+                for link in new_soup.find_all("a"):
+
+                    href = link.get("href")
+
+                    if href is not None:
+
+                        new_url = urljoin(r.url, href)
+
+                        if new_url not in visited:
+                            queue.append(new_url)
+
+
+        except requests.exceptions.Timeout:
+            print("URL timed out:", next_url)
+
+
 
 '''
 #todo
@@ -180,8 +255,9 @@ def main():
 	
 	if r is not None:
 		create_table()
-		url, text = save_text(r)
+		url, text, soup = save_text(r)
 		fill_table(url, text)
+		redirect_urls(soup, url)
 
 
 
@@ -206,7 +282,12 @@ after we do this,
 
 
 
+'''
+9/4/2026
 
+1. fix logic for incorrectly typed urls
+
+'''
 
 
 
