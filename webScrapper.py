@@ -1,56 +1,72 @@
 import requests # requests import is able to take care of the TCP connection and do HTTP get, the server sends us an HTTP responses, and the body of that response contains HTML. 
 from bs4 import BeautifulSoup
 import pandas as pd
-import networkx as nx # TODO: this is for requirement 3
 from collections import deque
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 import os 
 
-def check_robots(base_url, path): # use of ai, we need to simplify this. 
+def check_robots(base_url, path, robots_cache):
 
-    robots_url = base_url + "/robots.txt"
+    robots_url = base_url + "/robots.txt" 
 
-    response = requests.get(robots_url)
+    if base_url in robots_cache:  # if we have already gotten the domain's robot.txt
+        lines = robots_cache[base_url]  # use the rules already saved
 
-    if response.status_code != 200:
-        print("Could not read robots.txt")
-        return False
+    else:
 
-    lines = response.text.splitlines()
+        try:
+            response = requests.get(robots_url, timeout=5)
+
+        # catch errors to prevent crashes
+        except requests.exceptions.Timeout:
+            print("robots.txt timed out:", robots_url)
+            return False
+
+        except requests.exceptions.ConnectionError:
+            print("Could not connect to robots.txt:", robots_url)
+            return False
+
+        except requests.exceptions.InvalidURL:
+            print("Invalid robots.txt URL:", robots_url)
+            return False
+
+        if response.status_code != 200:
+            print("Could not read robots.txt")
+            return False
+
+        lines = response.text.splitlines() 
+
+        robots_cache[base_url] = lines # store robot.txt into cache
+
 
     reading_rules = False
 
     for line in lines:
 
         line = line.strip()
-        print(line)
 
-        if line.lower() == "user-agent: *":
+        if line.lower() == "user-agent: *": # all web crawlers
             reading_rules = True
-            # print("Found robot.txt")
-			 
 
         elif line.lower().startswith("user-agent:"):
             reading_rules = False
 
         elif reading_rules and line.lower().startswith("disallow:"):
 
-            disallowed_path = line.split(":", 1)[1].strip()
-            print(disallowed_path)
+            disallowed_path = line.split(":", 1)[1].strip() # take each disallowed paths
 
-            if disallowed_path and path.startswith(disallowed_path):
+            if disallowed_path and path.startswith(disallowed_path): # check path for disallowed paths
                 return False
 
-	
     return True
 
 
-def get_url ():
+def get_url(robots_cache): # function only runs once, the redirect logic takes over after user input
 
-	entered_url = input("Please enter the full URL of the site you would like to scrape in the HTTPS format: ")
-	print(f"Trying to access: ", entered_url)
+	entered_url = input("Please enter the full URL of the site you would like to scrape in the HTTPS format: ") 
+	print("Trying to access: ", entered_url)
 
-	while not entered_url.lower().startswith("https://www."):
+	while not (entered_url.lower().startswith("https://www.") or entered_url.lower().startswith("https://")): # user input logic 
 		entered_url = input("Error: Please enter the full URL with the HTTPS format: ")
 		
 		
@@ -58,96 +74,85 @@ def get_url ():
 		'user-agent': 'Mozilla/5.0'
 		}
 
-
-	# connection_attempts = 0
-	# max_attempts = 5
-	
 	client_sucess = [200]
 	client_errors = [400, 401, 403, 404, 429]
-	server_errors = [500, 502, 503, 504]
+	server_errors = [500, 502, 503, 504] # server errors included in case of crashes.
 
-	'''
-	# todo: we need to enforce the robots.txt
-		1. get the robot.txt, this is text file,
-		2. parse through the file, looking for user-agent *.
-		3. check the paths that we cannot travel
-		4. store the paths we cannot travel.
-
-		if the robot.txt says that we cannot travel any path '*', prompt the user, kill the process -> start with the beginning. 
-	'''
-
-
-	if not check_robots(entered_url, "/"):
+	if not check_robots(entered_url, "/", robots_cache):
 		print("robots.txt does not allow this site to be crawled.")
 		return None
-	
-
-	# while connection_attempts < max_attempts: # usually we can't connect off of first try. so just for safety ;p
-		
-	r = requests.head(entered_url, allow_redirects=True) 
+			 
 
 	try:
 		r = requests.get(entered_url, headers=headers, timeout = 5) #timeout will error out, but we need to save the csv before we crash
 
 	except requests.exceptions.Timeout: 
 		print("This URL has timed out, resetting queue")
-		#todo: skip this url in the queue. (if its the first, restart the process, if there is a queue, skip the url)
 
-	
-		# print(f"Trying to access: ", entered_url)
-
-		# connection_attempts += 1
-	
+    #todo: put other errors here just in case. reprompt user to restart is easier though.
 
 	if r.status_code in client_sucess:
 		# print(soup.get_text()) 
-		# print(r.status_code) # FOR DEBUG
+		# print(r.status_code) 
 		print("Connection established: Scraping HTML and URL")
 		return r
 
 	# if any error is returned / forbidden, prompt the user again 
 	if r.status_code in client_errors or r.status_code in server_errors:
 		input("You cannot access this site, please try another: ")
-	
-	# soup = BeautifulSoup(r.text, 'lxml')
-	
-	
 
-
-def save_text(r):
+    
+def save_text(r): # 
 
     soup = BeautifulSoup(r.text, 'lxml')
 
-    main = soup.find("main")
+    main = soup.find("main") # main body of html
 
     if main:
         readable_html = main.get_text(" ", strip=True)
     else:
-        readable_html = soup.body.get_text(" ", strip=True)
+        readable_html = soup.body.get_text(" ", strip=True) # if there is no main body, just pull all text
 
     readable_url = r.url
 
     return readable_url, readable_html, soup
 
 
+def create_adj_table(visited, connections):
+
+	url_index = {}
+
+	for i in range(len(visited)): # row and column belong for each URL
+		url_index[visited[i]] = i
+
+	matrix = [] # create an empty adjacency matrix filled with zeros
+
+	for i in range(len(visited)):
+
+		row = []
+
+		for j in range(len(visited)):
+			row.append(0) # set 0 for every url
+
+		matrix.append(row)
 
 
-def create_table():
+	for connection in connections:  # go through each connection between pages
 
-	df = pd.DataFrame(
-    {
-        "URL": [],
-        "Text": []
-    })
+		current_url = connection[0] 
+		new_url = connection[1] 
 
-	df = df.astype({
-		'URL': 'string', 
-		'Text': 'string'
-	})
+		if current_url in url_index and new_url in url_index:  # only record connections between visited pages
 
+			current_index = url_index[current_url]
+			new_index = url_index[new_url]
 
+			matrix[current_index][new_index] = 1 # if there is a path from the page of that origin, 1
 
-def fill_table(url, text):
+	return matrix
+
+      
+def fill_table(url, text): # export url and text to csv
 
     collected_rows = []
 
@@ -161,19 +166,43 @@ def fill_table(url, text):
     df.to_csv(
         'output.csv',
         mode='a',
-        header=not os.path.exists('output.csv'),
+        header=not os.path.exists('output.csv'), 
         index=False
     )
 
+def save_adj_table(visited_urls, matrix): # export adjancent matrix to csv
 
-def redirect_urls(soup, url):
+    collected_rows = []
+
+    for i in range(len(visited_urls)):
+
+        row = {
+            "URL": visited_urls[i]
+        }
+
+        for j in range(len(visited_urls)):
+            row[str(j)] = matrix[i][j]
+
+        collected_rows.append(row)
+
+    df = pd.DataFrame(collected_rows)
+
+    df.to_csv("adjacency.csv", index=False)
+
+
+def redirect_urls(soup, url, robots_cache):
 
     queue = deque()
 
-    max_pages = 500
+    max_pages = 5000
     pages_checked = 0
 
     visited = set()
+    visited_urls = []
+    connections = []
+
+    visited.add(url)
+    visited_urls.append(url)
 
     # grab links from first page
     for link in soup.find_all("a"):
@@ -182,9 +211,15 @@ def redirect_urls(soup, url):
 
         if href is not None:
             full_url = urljoin(url, href)
-            queue.append(full_url)
 
+            if full_url.startswith("http://") or full_url.startswith("https://"):
 
+                connections.append((url, full_url))
+
+                if full_url not in visited and full_url not in queue:
+                    queue.append(full_url)
+
+    # go through the queue, check robots.txt, and stop at the page limit
     while queue and pages_checked < max_pages:
 
         next_url = queue.popleft()
@@ -192,10 +227,21 @@ def redirect_urls(soup, url):
         if next_url in visited:
             continue
 
+        parsed_url = urlparse(next_url)
+
+        base_url = parsed_url.scheme + "://" + parsed_url.netloc
+        path = parsed_url.path
+
+        if not check_robots(base_url, path, robots_cache):
+            print("robots.txt does not allow:", next_url)
+            continue
+
         visited.add(next_url)
+        visited_urls.append(next_url) 
 
         print("Redirecting to:", next_url)
 
+        # grab the page, get the text, and fill the table
         try:
             r = requests.get(next_url, timeout=5)
 
@@ -209,16 +255,19 @@ def redirect_urls(soup, url):
 
                 if main:
                     text = main.get_text(" ", strip=True)
-                else:
+
+                elif new_soup.body:
                     text = new_soup.body.get_text(" ", strip=True)
 
+                else:
+                    print("No readable body found:", r.url)
+                    continue
+                
                 fill_table(r.url, text)
 
                 pages_checked += 1
 
-
-                # NEW PART:
-                # grab links from this new page
+                # grab links from this new page, add new ones to queue
                 for link in new_soup.find_all("a"):
 
                     href = link.get("href")
@@ -227,113 +276,44 @@ def redirect_urls(soup, url):
 
                         new_url = urljoin(r.url, href)
 
-                        if new_url not in visited:
-                            queue.append(new_url)
+                        if new_url.startswith("https://") or new_url.startswith("http://"):
 
+                            connections.append((r.url, new_url))
 
+                            if new_url not in visited and new_url not in queue:
+                                queue.append(new_url)
+
+        # error checks so we don't crash
         except requests.exceptions.Timeout:
             print("URL timed out:", next_url)
 
+        except requests.exceptions.ConnectionError:
+            print("Connection failed:", next_url)   
 
+        except requests.exceptions.InvalidURL:
+            print("Invalid URL:", next_url)
 
-'''
-#todo
-	0.5. lets try setting a hard limit on the redirects so we know when to stop. this will be hard coded for now.
-	1. pull hrefs from the save_text(r)
-	2. we need to impelement a fifo queue here.
-	3. check with the paths that we cannot travel to from get_urls.
-	4. tell user that there is queue, would you like to continue, if not just save the one link, if yes, proceed with the queue.
+    # create the matrix and save it to the csv
+    matrix = create_adj_table(visited_urls, connections) 
+    save_adj_table(visited_urls, matrix)
 
-	4.5 we're eventually going to pull more hrefs from travelling these redirects, store these in the queue, go through them as they go.
-'''
-
-
-
+    return matrix
 
 def main():
-	r = get_url()
+
+	robots_cache = {}
+
+	r = get_url(robots_cache)
 	
-	if r is not None:
-		create_table()
+	if r is not None: 
 		url, text, soup = save_text(r)
 		fill_table(url, text)
-		redirect_urls(soup, url)
+		redirect_urls(soup, url, robots_cache)
 
 
 
 if __name__ == "__main__":
     main()
-
-
-
-''' 
-
-# 8/31/2026
-restructured design and encapsulated all functions. we still need to implement the fill table function as we want to keep the fill 
-and create table functions seperately. 
-
-after we do this, 
-2. handle redirects logic (href)
-3. handle crashes. (still need an idea for this)
-4. handle hard limits. 
-
-
-'''
-
-
-
-'''
-9/4/2026
-
-1. fix logic for incorrectly typed urls
-
-'''
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 '''
 When crawling, you need to collect multiple things. 
@@ -341,19 +321,4 @@ When crawling, you need to collect multiple things.
 2. Second, the URL of the page you got the URL from. You will need the URL to make sure you don’t crawl the same page twice. You will also need the URL to ensure you can retrieve the original page again. 
 3. Finally, when crawling, keep an adjacency matrix so you know which pages link to others. This will be directed, as a page might point to another, but not visa versa.
 '''
-
-'''
-# 8/27/26 notes: 
-We are able to ping a domain and recieve a status code. I have set flags to come back for when we get stopped,
-but I need to wrap this around redirection / stop logic so when the crawler gets stopped it doesn't crash.
-
-The start of requirements #1 and #2 are there, but I need to figure out how to use pandas to store that into a dictionary.
-
-'''
-
-
-
-
-
-
 
