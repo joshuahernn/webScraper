@@ -314,11 +314,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-'''
-When crawling, you need to collect multiple things. 
-1. First, the raw text of the page.  This means you don’t want the entire HTML file, but rather, just the important bits of text. 
-2. Second, the URL of the page you got the URL from. You will need the URL to make sure you don’t crawl the same page twice. You will also need the URL to ensure you can retrieve the original page again. 
-3. Finally, when crawling, keep an adjacency matrix so you know which pages link to others. This will be directed, as a page might point to another, but not visa versa.
-'''
-
