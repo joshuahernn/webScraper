@@ -1,0 +1,4 @@
+URL,Text
+https://demo.example,"Crawler demo Three pages, one connected site."
+https://demo.example/about,About This fixture demonstrates relative link discovery.
+https://demo.example/contact,Contact The link home closes the cycle.

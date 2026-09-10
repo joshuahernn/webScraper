@@ -1,0 +1,5 @@
+# Direct dependencies verified with Python 3.14.3 and the offline demo.
+requests==2.34.2
+beautifulsoup4==4.15.0
+pandas==3.0.5
+lxml==6.1.3
