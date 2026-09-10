@@ -82,7 +82,3 @@ The demo's `Home → Contact → Home` cycle shows why visited tracking matters:
 This is an educational crawler for static HTML. It has five-second request timeouts, but seed error recovery, redirects, robots handling, and non-HTML responses need more work. Failed requests can leave graph entries without text rows. The offline demo verifies the included scenario, not general live-site reliability.
 
 Next priorities are configurable crawl limits and domain scope, request pacing and stronger failure handling, and a compact edge-list export. See [current boundaries](docs/design.md#current-boundaries) for details.
-
-## Background
-
-Originally built for CS454 coursework to explore HTTP requests, HTML parsing, crawl queues, and graph representations without a crawling framework. The core implementation is in [`webScraper.py`](webScraper.py); the reproducible demo and graph renderer live in [`examples/run_demo.py`](examples/run_demo.py).
