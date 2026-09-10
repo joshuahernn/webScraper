@@ -1,0 +1,11 @@
+Offline demo: using included HTML and robots.txt fixtures.
+Trying to access:  https://demo.example
+Connection established: Scraping HTML and URL
+Redirecting to: https://demo.example/about
+Successfully connected to: https://demo.example/about
+Redirecting to: https://demo.example/contact
+Successfully connected to: https://demo.example/contact
+robots.txt does not allow: https://demo.example/private/
+Verified: 3 pages, 4 directed links, 1 blocked path.
+Each page fetched once; robots.txt fetched once.
+Saved demo artifacts to examples/sample-output/
